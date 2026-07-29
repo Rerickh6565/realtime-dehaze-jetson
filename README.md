@@ -51,11 +51,14 @@ The MS-SSIM term prioritizes multi-scale structural and edge recovery; the L₁ 
 
 ## Benchmark Results
 
-| Training Data | Test Set | PSNR | SSIM |
-|:---|:---|:---:|:---:|
-| FoggyCityscapes + SmokeBench | FoggyCityscapes | **22.99 dB** | **0.9214** |
-| FoggyCityscapes + SmokeBench | SmokeBench | **19.32 dB** | **0.7614** |
-| FoggyCityscapes only | FoggyCityscapes | 22.37 dB | 0.9137 |
+The table below compares the base LightDehazeNet (trained with standard L₁ loss) against our model trained with the custom Hybrid MS-SSIM + L₁ loss (α = 0.84). Both trained on FoggyCityscapes + SmokeBench.
+
+| Test Set | Base Model (L₁) | | Custom Loss (α = 0.84) | |
+|:---|:---:|:---:|:---:|:---:|
+| | PSNR | SSIM | PSNR | SSIM |
+| FoggyCityscapes (dense fog) | 18.87 dB | 0.9077 | **22.99 dB** | **0.9214** |
+| SmokeBench | 18.02 dB | 0.7608 | **19.32 dB** | **0.7614** |
+| **Average** | 18.45 dB | 0.8343 | **21.15 dB** | **0.8414** |
 
 ### FoggyCityscapes — Qualitative Output
 ![FoggyCityscapes Results](assets/results_foggy_cityscapes.png)
