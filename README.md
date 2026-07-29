@@ -79,18 +79,6 @@ The TensorRT FP16 engine was tested on `bikers.mp4` — an unseen internet video
 
 ---
 
-## Architecture
-
-![LD-Net Architecture](assets/framework.png)
-
-LightDehazeNet is a compact 8-layer CNN (~0.21M parameters) with three concatenated skip connections. Rather than estimating the transmission map and atmospheric light as separate sub-tasks, it directly applies a reformulated Atmospheric Scattering Model:
-
-$$J(x) = K(x) \cdot I(x) - K(x) + 1$$
-
-where $K(x)$ is the Conv8 output and $I(x)$ is the hazy input.
-
----
-
 ## Deployment Pipeline
 
 ```
@@ -165,22 +153,3 @@ python scripts/infer_batch.py -td samples/outdoor_natural/
 
 See [docker/SETUP.md](docker/SETUP.md) for detailed container setup and GPU/camera verification.
 
----
-
-## Citation
-
-```bibtex
-@article{ullah2021light,
-  title={Light-DehazeNet: A Novel Lightweight CNN Architecture for Single Image Dehazing},
-  author={Ullah, Hayat and Muhammad, Khan and Irfan, Muhammad and Anwar, Saeed and
-          Sajjad, Muhammad and Imran, Ali Shariq and De Albuquerque, Victor Hugo C},
-  journal={IEEE Transactions on Image Processing},
-  year={2021},
-  publisher={IEEE}
-}
-```
-
-## Acknowledgements
-
-- [Light-DehazeNet](https://github.com/hayatkhan8660-maker/Light-DehazeNet) — Hayat Ullah et al., IEEE TIP 2021
-- [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt) — NVIDIA AI-IOT
