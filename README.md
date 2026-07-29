@@ -1,236 +1,173 @@
-# LightDehazeNet on Jetson Nano: Custom Loss Optimization, TensorRT FP16 & Edge Deployment
+# LightDehazeNet on Jetson Nano
 
-[![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-blue?logo=python)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-1.9-ee4c2c?logo=pytorch)](https://pytorch.org/)
-[![TensorRT](https://img.shields.io/badge/TensorRT-FP16-76b900?logo=nvidia)](https://developer.nvidia.com/tensorrt)
-[![Jetson Nano](https://img.shields.io/badge/Platform-NVIDIA%20Jetson%20Nano-76b900?logo=nvidia)](https://developer.nvidia.com/embedded/jetson-nano)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
-[![Paper](https://img.shields.io/badge/IEEE%20Tencon-2026-blue)](https://ieeexplore.ieee.org/abstract/document/9562276)
+[![Python 3.7+](https://img.shields.io/badge/Python-3.7%2B-3572A5?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch 1.9](https://img.shields.io/badge/PyTorch-1.9-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![TensorRT FP16](https://img.shields.io/badge/TensorRT-FP16-76b900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/tensorrt)
+[![Jetson Nano](https://img.shields.io/badge/NVIDIA-Jetson%20Nano-76b900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/embedded/jetson-nano)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-> End-to-end edge AI project deploying an optimized **LightDehazeNet (LD-Net)** model on **NVIDIA Jetson Nano**. Includes custom **Hybrid MS-SSIM + L1 loss training innovations**, **TensorRT FP16 engine conversion**, and **real-time Flask web streaming**.
-
----
-
-## 📌 Executive Summary & Key Highlights
-
-This repository showcases the complete training enhancements, TensorRT optimization pipeline, and Jetson Nano edge deployment for **LightDehazeNet**:
-
-1. **🏋️ Custom Loss Function Innovation**: Formulated a hybrid loss ($\alpha \cdot \text{MS-SSIM} + (1-\alpha) \cdot L_1$) with $\alpha = 0.84$, achieving a **93% reduction in convergence latency** (breakthrough at Epoch 5) and eliminating the **"Identity Trap"** inherent to standard $L_1$/MSE loss training.
-2. **📊 Robust Evaluation Metrics**: Benchmarked on **FoggyCityscapes** (PSNR: **22.99 dB**, SSIM: **0.9214**) and **SmokeBench** (PSNR: **19.32 dB**, SSIM: **0.7614**).
-3. **⚡ TensorRT FP16 Acceleration**: Converted the PyTorch `.pth` checkpoint using `torch2trt` to a TensorRT engine, enabling low-latency FP16 execution on Jetson GPU hardware.
-4. **🎥 Real-World Video & Edge Deployment**: Deployed inside an isolated Docker container with real-time camera passthrough and zero-shot real-world video dehazing (`bikers.mp4`) served via MJPEG web streaming (Flask + OpenCV).
+End-to-end deployment of **LightDehazeNet** on **NVIDIA Jetson Nano** — trained with a custom Hybrid MS-SSIM + L₁ loss, accelerated via TensorRT FP16 engine conversion, and served as a real-time MJPEG dehazing web stream.
 
 ---
 
-## 🔬 Training Innovations & Loss Function Ablation Study
+## Overview
 
-Standard image dehazing models trained purely on pixel-level loss ($L_1$ or MSE) suffer from blurry outputs and severe convergence delay, often stuck in an **"Identity Trap"** for up to 70 epochs before learning meaningful structural dehazing.
+| | |
+|---|---|
+| **Custom Loss** | Hybrid MS-SSIM + L₁ (α = 0.84) — 93% faster convergence vs. L₁ baseline |
+| **Benchmark** | FoggyCityscapes: PSNR **22.99 dB** / SSIM **0.9214**  ·  SmokeBench: PSNR **19.32 dB** / SSIM **0.7614** |
+| **TensorRT FP16** | PyTorch `.pth` → TensorRT engine via `torch2trt`, fixed 256×256 input |
+| **Edge Streaming** | Real-time side-by-side dehazing served as MJPEG over Flask on Jetson Nano |
 
-### 1. Modified Hybrid Loss Function
+---
 
-We introduced a weighted structural-perceptual loss:
+## Training — Custom Loss & Ablation Study
 
-$$\mathcal{L}_{\text{custom}} = 0.84 \cdot \mathcal{L}_{\text{MS-SSIM}} + 0.16 \cdot \mathcal{L}_{L1}$$
+Standard L₁ and MSE-trained dehazing models exhibit an **Identity Trap**: the network learns to pass hazy inputs through unchanged for up to 70 epochs before achieving any meaningful dehazing. We resolved this with a perceptual-structural loss formulation:
 
-* **Perceptual Dominance (84% MS-SSIM)**: Prioritizes high-frequency edge details, multi-scale texture recovery, and structural consistency across scales.
-* **Balanced Convergence (16% L1)**: Stabilizes global color distribution and guards against luminance drift.
+$$\mathcal{L} = 0.84 \cdot \mathcal{L}_{\text{MS-SSIM}} + 0.16 \cdot \mathcal{L}_{L1}$$
 
-### 2. Loss Weighting ($\alpha$) Ablation Study
+The MS-SSIM term prioritizes multi-scale structural and edge recovery; the L₁ term stabilizes global luminance and prevents color drift.
 
-We conducted an extensive ablation study across $\alpha \in [0.0, 0.9]$ to identify the trade-off between numerical fidelity (PSNR/SSIM) and optimization convergence latency:
+### Alpha Ablation
 
-| Experiment | Structural Weight ($\alpha$) | Mean PSNR (dB) | Mean SSIM | Convergence Latency / Notes |
-|:---|:---:|:---:|:---:|:---|
-| **$L_1$ Baseline** | `0.00` | 22.54 | 0.9260 | Severe 'Identity Trap' (~70 epochs to initiate dehazing) |
-| **Alpha 0.50** | `0.50` | 22.09 | 0.9369 | Slow structural convergence |
-| **Alpha 0.60** | `0.60` | 20.86 | **0.9439** | Peak numerical SSIM, but high startup latency |
-| **Alpha 0.70** | `0.70` | 22.10 | 0.9139 | Moderate stability |
-| **Alpha 0.80** | `0.80` | 21.22 | 0.9140 | Improved convergence |
-| **Proposed ($\alpha=0.84$)** | **`0.84`** | **20.78** | **0.9194** | ⚡ **Engineering Optimum** (93% latency reduction, breakthrough at Epoch 5) |
-| **Alpha 0.90** | `0.90` | 8.43 | 0.7711 | Optimization collapse / instability |
+| α | PSNR (dB) | SSIM | Notes |
+|:---:|:---:|:---:|:---|
+| 0.00 (L₁ baseline) | 22.54 | 0.9260 | Identity Trap — ~70 epochs before dehazing initiates |
+| 0.50 | 22.09 | 0.9369 | Slow structural convergence |
+| 0.60 | 20.86 | **0.9439** | Peak SSIM, but high startup latency |
+| 0.70 | 22.10 | 0.9139 | Moderate stability |
+| 0.80 | 21.22 | 0.9140 | Improved convergence |
+| **0.84 (proposed)** | **20.78** | **0.9194** | Breakthrough at Epoch 5 — 93% latency reduction |
+| 0.90 | 8.43 | 0.7711 | Optimization collapse |
 
-### 3. Ablation Visualization
-
-| Metrics vs. Loss Weighting | Escaping the Identity Trap |
+| PSNR & SSIM vs. Alpha | Convergence — Escaping the Identity Trap |
 |:---:|:---:|
-| ![Metrics vs Alpha](assets/metrics_plot.png) | ![Convergence Elbow](assets/convergence_elbow.png) |
+| ![Metrics Plot](assets/metrics_plot.png) | ![Convergence Elbow](assets/convergence_elbow.png) |
 
-> **Key Finding**: Setting $\alpha = 0.84$ acts as an optimization catalyst. It achieves functional dehazing breakthrough at **Epoch 5** (compared to 70 epochs for $L_1$), providing structural pressure while avoiding the stochastic collapse observed at $\alpha \ge 0.90$.
+**Key finding:** α = 0.84 acts as an optimization catalyst. The model achieves functional dehazing at Epoch 5 (compared to ~70 for L₁), while α ≥ 0.90 leads to stochastic collapse.
 
 ---
 
-## 📈 Quantitative Benchmark Results
+## Benchmark Results
 
-The model was evaluated on standard benchmark datasets representing synthetic dense fog and real smoke conditions:
-
-### Model Performance Summary
-
-| Model Setup / Training Data | Test Dataset | Mean PSNR (dB) | Mean SSIM |
+| Training Data | Test Set | PSNR | SSIM |
 |:---|:---|:---:|:---:|
-| **LightDehazeNet**<br>*(Trained on FoggyCityscapes + SmokeBench)* | FoggyCityscapes (Dense Fog) | **22.99 dB** | **0.9214** |
-| | SmokeBench Test Set | **19.32 dB** | **0.7614** |
-| | **Averaged Overall** | **21.15 dB** | **0.8414** |
-| **LightDehazeNet**<br>*(Trained on FoggyCityscapes Only)* | FoggyCityscapes (Dense Fog) | **22.37 dB** | **0.9137** |
+| FoggyCityscapes + SmokeBench | FoggyCityscapes | **22.99 dB** | **0.9214** |
+| FoggyCityscapes + SmokeBench | SmokeBench | **19.32 dB** | **0.7614** |
+| FoggyCityscapes only | FoggyCityscapes | 22.37 dB | 0.9137 |
 
----
-
-## 🖼️ Qualitative Results
-
-### 1. Benchmark Dataset Restoration (FoggyCityscapes & SmokeBench)
-
-The stitched evaluation outputs below illustrate qualitative restoration performance on benchmark test sets:
-
-#### FoggyCityscapes Evaluation Result
+### FoggyCityscapes — Qualitative Output
 ![FoggyCityscapes Results](assets/results_foggy_cityscapes.png)
 
-#### SmokeBench Evaluation Result
+### SmokeBench — Qualitative Output
 ![SmokeBench Results](assets/results_smokebench.jpg)
 
 ---
 
-### 2. Zero-Shot Real-World Video Inference (`bikers.mp4`)
+## Zero-Shot Real-World Video Inference
 
-To test real-world generalization, the TensorRT FP16 optimized engine was evaluated on an un-seen internet video (`bikers.mp4`). The model was **not** trained on this video, demonstrating zero-shot dehazing under dynamic real-world conditions:
+The TensorRT FP16 engine was tested on `bikers.mp4` — an unseen internet video the model was never trained on. Output is streamed side-by-side (hazy | dehazed) at real-time frame rates via Flask on Jetson Nano.
 
-| Real-World Video Inference Sample 1 | Real-World Video Inference Sample 2 |
+| Frame 1 | Frame 2 |
 |:---:|:---:|
-| ![Bikers Video Inference 1](assets/screenshots/bikers_video_inference_1.png) | ![Bikers Video Inference 2](assets/screenshots/bikers_video_inference_2.png) |
+| ![](assets/screenshots/bikers_video_inference_1.png) | ![](assets/screenshots/bikers_video_inference_2.png) |
 
-| Real-World Video Inference Sample 3 | Real-World Video Inference Sample 4 |
+| Frame 3 | Frame 4 |
 |:---:|:---:|
-| ![Bikers Video Inference 3](assets/screenshots/bikers_video_inference_3.png) | ![Bikers Video Inference 4](assets/screenshots/bikers_video_inference_4.png) |
+| ![](assets/screenshots/bikers_video_inference_3.png) | ![](assets/screenshots/bikers_video_inference_4.png) |
 
 ---
 
-## 🏗️ Architecture & Reformulated Scattering Model
+## Architecture
 
 ![LD-Net Architecture](assets/framework.png)
 
-LightDehazeNet utilizes a compact 8-layer convolutional neural network (~0.21M parameters) with concatenated skip connections (`Concat 1`, `Concat 2`, `Concat 3`).
+LightDehazeNet is a compact 8-layer CNN (~0.21M parameters) with three concatenated skip connections. Rather than estimating the transmission map and atmospheric light as separate sub-tasks, it directly applies a reformulated Atmospheric Scattering Model:
 
-Instead of estimating atmospheric light $A$ and transmission map $t(x)$ separately, LD-Net reformulates the Atmospheric Scattering Model (ASM) as a single direct transformation:
+$$J(x) = K(x) \cdot I(x) - K(x) + 1$$
 
-$$J(x) = K(x) \cdot I(x) - K(x) + b$$
-
-where $K(x)$ is the learned feature output from Conv8, $I(x)$ is the hazy input image, and $b = 1$.
+where $K(x)$ is the Conv8 output and $I(x)$ is the hazy input.
 
 ---
 
-## ⚙️ TensorRT FP16 Optimization & Jetson Nano Deployment
-
-To achieve real-time throughput on Jetson Nano edge hardware:
-
-1. **PyTorch Checkpoint**: Trained model saved as `weights/trained_LDNet.pth` (~125 KB).
-2. **TensorRT FP16 Engine**: Converted using `torch2trt` with fixed $(1, 3, 256, 256)$ input shape.
-3. **Execution**: Saved as `weights/ldnet_trt.pth` (~2.2 MB), running with FP16 precision for GPU execution.
+## Deployment Pipeline
 
 ```
-+-------------------+      torch2trt      +-----------------------+      Flask + OpenCV      +------------------------+
-| PyTorch (.pth)    |  ---------------->  | TensorRT Engine (FP16)|  --------------------->  | MJPEG Web Stream       |
-| LightDehazeNet    |   FP16 Conversion   | ldnet_trt.pth         |   Edge Video Feed        | http://<jetson-ip>:5000|
-+-------------------+                     +-----------------------+                          +------------------------+
+PyTorch checkpoint   →   torch2trt (FP16)   →   TensorRT engine   →   Flask MJPEG stream
+trained_LDNet.pth                               ldnet_trt.pth         http://<jetson>:5000
 ```
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 .
-├── src/                        # Core model architecture & inference logic
-│   ├── model.py                # LightDehaze_Net neural network (~0.21M params)
-│   ├── inference.py            # PyTorch inference & tensor preprocessing helpers
-│   ├── cvr.py                  # Color Visibility Restoration (CLAHE post-processing)
-│   └── utils/
-│       └── model_info.py       # Layer-by-layer parameter counter
+├── src/
+│   ├── model.py            # LightDehaze_Net architecture (~0.21M params)
+│   ├── inference.py        # Model loader and preprocessing helpers
+│   ├── cvr.py              # Color Visibility Restoration (CLAHE post-processing)
+│   └── model_info.py       # Layer-wise parameter counter
 │
-├── scripts/                    # Runnable entry-point scripts
-│   ├── convert_trt.py          # Convert PyTorch .pth → TensorRT FP16 engine
-│   ├── infer_image.py          # Run dehazing on a single image file
-│   ├── infer_batch.py          # Run batch dehazing on a directory of images
-│   ├── stream_live_camera.py   # Live Jetson camera dehazing MJPEG web stream (TRT)
-│   ├── stream_video_file.py    # Video file dehazing MJPEG web stream (TRT)
-│   └── camera_raw_stream.py    # Raw camera feed verification stream
+├── scripts/
+│   ├── convert_trt.py          # PyTorch → TensorRT FP16 conversion
+│   ├── infer_image.py          # Single image dehazing
+│   ├── infer_batch.py          # Batch image dehazing
+│   ├── stream_live_camera.py   # Live Jetson camera MJPEG stream (TRT)
+│   ├── stream_video_file.py    # Video file MJPEG stream (TRT)
+│   └── camera_raw_stream.py    # Raw camera passthrough (debug)
 │
-├── docker/
-│   └── SETUP.md                # Docker container load & execution guide
+├── notebooks/
+│   └── evaluation_plots.ipynb  # PSNR/SSIM ablation and metric visualizations
 │
-├── assets/                     # Architecture diagrams, ablation charts & result samples
-│   ├── metrics_plot.png        # PSNR & SSIM vs Alpha ablation plot
-│   ├── convergence_elbow.png   # Identity trap convergence latency plot
-│   ├── framework.png           # Network architecture diagram
-│   ├── results_foggy_cityscapes.png  # FoggyCityscapes evaluation strip
-│   ├── results_smokebench.jpg        # SmokeBench evaluation strip
-│   ├── bikers.mp4              # Test video for zero-shot inference
-│   └── screenshots/            # Internet video (bikers.mp4) inference screenshots
+├── assets/                 # Architecture diagram, ablation plots, result images
+│   └── screenshots/        # Zero-shot bikers.mp4 inference frames
 │
-├── weights/                    # Pre-trained model checkpoints & TensorRT engines
-│   ├── trained_LDNet.pth       # PyTorch trained weights
-│   ├── ldnet_trt.pth           # TensorRT FP16 engine weights
-│   └── README.md               # Weights documentation
+├── weights/
+│   ├── trained_LDNet.pth   # Trained PyTorch checkpoint
+│   ├── ldnet_trt.pth       # TensorRT FP16 engine
+│   └── README.md           # Weights download guide
 │
-├── results/                    # Output directory for infer_batch / infer_image scripts
-├── Dockerfile                  # Container definition for Jetson environment
-├── run_container.sh            # One-command container launcher script
-└── requirements.txt            # Python dependencies
+├── samples/                # Test images (indoor/outdoor, synthetic/natural haze)
+├── docker/SETUP.md         # Container load and run guide
+├── Dockerfile
+├── run_container.sh
+└── requirements.txt
 ```
 
 ---
 
-## 🚀 Quickstart & Usage
-
-### 1. Launch Docker Container on Jetson
+## Quickstart
 
 ```bash
-# Load Docker image
+# Load and launch the Docker container on Jetson
 docker load -i my_jetson_env.tar
-
-# Launch interactive container with GPU & camera passthrough
 bash run_container.sh
-```
 
-### 2. Convert PyTorch Model to TensorRT FP16
-
-Inside the container:
-
-```bash
+# Convert PyTorch checkpoint to TensorRT FP16
 python scripts/convert_trt.py
-# Saves TensorRT engine to weights/ldnet_trt.pth
-```
 
-### 3. Single Image Dehazing
-
-```bash
-python scripts/infer_image.py -i assets/hazy_sample.png
-# Saved output to results/
-```
-
-### 4. Batch Image Dehazing
-
-```bash
-python scripts/infer_batch.py -td query_hazy_images/outdoor_natural/
-# Saves outputs to results/ directory
-```
-
-### 5. Real-Time Camera Stream (TensorRT FP16)
-
-```bash
+# Live camera dehazing stream
 python scripts/stream_live_camera.py
-# Open http://<jetson-ip>:5000 in your browser
-```
+# Open http://<jetson-ip>:5000
 
-### 6. Video Dehazing Stream (Side-by-Side Comparison)
-
-```bash
+# Video file dehazing stream (side-by-side)
 python scripts/stream_video_file.py
-# Streams side-by-side (Hazy | Dehazed) feed at http://<jetson-ip>:5000
+# Open http://<jetson-ip>:5000
+
+# Single image
+python scripts/infer_image.py -i samples/outdoor_synthetic/soh(1).jpg
+
+# Batch inference on a directory
+python scripts/infer_batch.py -td samples/outdoor_natural/
 ```
+
+See [docker/SETUP.md](docker/SETUP.md) for detailed container setup and GPU/camera verification.
 
 ---
 
-## 📜 Citation
-
-If you use this work or reference our custom loss training & TensorRT deployment on Jetson, please cite:
+## Citation
 
 ```bibtex
 @article{ullah2021light,
@@ -243,9 +180,7 @@ If you use this work or reference our custom loss training & TensorRT deployment
 }
 ```
 
----
+## Acknowledgements
 
-## 🤝 Acknowledgements
-
-- **Light-DehazeNet**: Original architecture by Hayat Ullah et al. (IEEE TIP 2021).
-- **NVIDIA `torch2trt`**: TensorRT PyTorch converter by NVIDIA AI-IOT.
+- [Light-DehazeNet](https://github.com/hayatkhan8660-maker/Light-DehazeNet) — Hayat Ullah et al., IEEE TIP 2021
+- [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt) — NVIDIA AI-IOT

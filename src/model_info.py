@@ -2,7 +2,7 @@
 model_info.py — Print LightDehaze_Net parameter counts (total and per-layer).
 
 Usage:
-    python src/utils/model_info.py
+    python src/model_info.py
 """
 
 import torch
