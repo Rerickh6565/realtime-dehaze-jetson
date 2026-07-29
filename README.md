@@ -5,7 +5,7 @@
 [![TensorRT](https://img.shields.io/badge/TensorRT-FP16-76b900?logo=nvidia)](https://developer.nvidia.com/tensorrt)
 [![Jetson Nano](https://img.shields.io/badge/Platform-NVIDIA%20Jetson%20Nano-76b900?logo=nvidia)](https://developer.nvidia.com/embedded/jetson-nano)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
-[![Paper](https://img.shields.io/badge/IEEE%20TIP-2021-blue)](https://ieeexplore.ieee.org/abstract/document/9562276)
+[![Paper](https://img.shields.io/badge/IEEE%20Tencon-2026-blue)](https://ieeexplore.ieee.org/abstract/document/9562276)
 
 > End-to-end edge AI project deploying an optimized **LightDehazeNet (LD-Net)** model on **NVIDIA Jetson Nano**. Includes custom **Hybrid MS-SSIM + L1 loss training innovations**, **TensorRT FP16 engine conversion**, and **real-time Flask web streaming**.
 
