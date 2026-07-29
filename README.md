@@ -112,7 +112,7 @@ trained_LDNet.pth                               ldnet_trt.pth         http://<je
 ├── notebooks/
 │   └── evaluation_plots.ipynb  # PSNR/SSIM ablation and metric visualizations
 │
-├── assets/                 # Architecture diagram, ablation plots, result images
+├── assets/                 # Ablation plots, benchmark results, inference screenshots
 │   └── screenshots/        # Zero-shot bikers.mp4 inference frames
 │
 ├── weights/
@@ -120,7 +120,7 @@ trained_LDNet.pth                               ldnet_trt.pth         http://<je
 │   ├── ldnet_trt.pth       # TensorRT FP16 engine
 │   └── README.md           # Weights download guide
 │
-├── samples/                # Test images (indoor/outdoor, synthetic/natural haze)
+├── torch2trt/               # NVIDIA torch2trt engine library
 ├── docker/SETUP.md         # Container load and run guide
 ├── Dockerfile
 ├── run_container.sh
@@ -147,11 +147,11 @@ python scripts/stream_live_camera.py
 python scripts/stream_video_file.py
 # Open http://<jetson-ip>:5000
 
-# Single image
-python scripts/infer_image.py -i samples/outdoor_synthetic/soh(1).jpg
+# Single image inference
+python scripts/infer_image.py -i <path/to/hazy_image.jpg>
 
 # Batch inference on a directory
-python scripts/infer_batch.py -td samples/outdoor_natural/
+python scripts/infer_batch.py -td <path/to/directory/>
 ```
 
 See [docker/SETUP.md](docker/SETUP.md) for detailed container setup and GPU/camera verification.

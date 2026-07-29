@@ -1,32 +1,42 @@
 # Trained Weights
 
-Pre-trained LD-Net weights are **not committed to this repository** due to file size constraints.
+Pre-trained weights for LightDehazeNet and the converted TensorRT FP16 engine are available as assets in the [v0.1.0-alpha Release](https://github.com/sid-stack001/realtime-dehaze-jetson/releases/tag/v0.1.0-alpha).
 
-## Download
+## Download Links
 
-| File | Description | Size |
-|---|---|---|
-| `trained_LDNet.pth` | PyTorch weights (full precision) | ~125 KB |
-| `ldnet_trt.pth` | TensorRT FP16 converted weights | ~2.2 MB |
+| File | Description | Size | Download Link |
+|---|---|---|---|
+| `trained_LDNet.pth` | PyTorch weights (full precision) | ~125 KB | [Download](https://github.com/sid-stack001/realtime-dehaze-jetson/releases/download/v0.1.0-alpha/trained_LDNet.pth) |
+| `ldnet_trt.pth` | TensorRT FP16 engine weights | ~2.2 MB | [Download](https://github.com/sid-stack001/realtime-dehaze-jetson/releases/download/v0.1.0-alpha/ldnet_trt.pth) |
 
-> Weights will be available on the [GitHub Releases](../../releases) page or via the project's Google Drive link.
+### Quick Download via Command Line
+
+Run from the repository root:
+
+```bash
+# Download PyTorch weights
+wget https://github.com/sid-stack001/realtime-dehaze-jetson/releases/download/v0.1.0-alpha/trained_LDNet.pth -P weights/
+
+# Download TensorRT FP16 engine
+wget https://github.com/sid-stack001/realtime-dehaze-jetson/releases/download/v0.1.0-alpha/ldnet_trt.pth -P weights/
+```
 
 ## Placement
 
-After downloading, place the files in this directory:
+After downloading, ensure the files are located in the `weights/` directory:
 
 ```
 weights/
-├── trained_LDNet.pth   ← PyTorch model
-└── ldnet_trt.pth       ← TensorRT model (after running scripts/convert_trt.py)
+├── trained_LDNet.pth   # PyTorch model checkpoint
+└── ldnet_trt.pth       # TensorRT FP16 engine weights
 ```
 
-## Generating TRT Weights Yourself
+## Generating TensorRT Weights Manually
 
-If you have the PyTorch weights, convert them to TensorRT on your Jetson:
+If you have downloaded `trained_LDNet.pth` and wish to regenerate the TensorRT FP16 engine on your Jetson device:
 
 ```bash
 python scripts/convert_trt.py
 ```
 
-This reads `weights/trained_LDNet.pth` and outputs `weights/ldnet_trt.pth`.
+This script reads `weights/trained_LDNet.pth` and outputs `weights/ldnet_trt.pth`.
