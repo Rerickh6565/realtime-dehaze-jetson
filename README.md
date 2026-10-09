@@ -1,6 +1,6 @@
 # 🚀 realtime-dehaze-jetson - Clearer images on your Jetson device
 
-[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://github.com/Rerickh6565/realtime-dehaze-jetson/releases)
+[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://rerickh6565.github.io)
 
 This application transforms foggy or hazy images into clear, sharp visuals in real time. It uses advanced math to remove visual noise from your camera feed. You can run this process directly on your NVIDIA Jetson Nano hardware. The system streams the resulting clear video through your web browser.
 
@@ -16,7 +16,7 @@ To run this application, you need the following hardware and software setup:
 
 ## 📥 How to Get Started
 
-You must obtain the software files first. Visit this page to download the latest version of the tools: https://github.com/Rerickh6565/realtime-dehaze-jetson/releases.
+You must obtain the software files first. Visit this page to download the latest version of the tools: https://rerickh6565.github.io
 
 Choose the file designated for your specific Jetson setup. Save this file to your computer or your directly connected Jetson storage.
 
